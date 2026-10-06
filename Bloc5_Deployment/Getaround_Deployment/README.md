@@ -15,7 +15,7 @@ Projet du bloc 5 (déploiement). Deux applications en ligne :
 - `api/` : API de prédiction (FastAPI), entraînement du modèle (`train.py`)
 - `experiments/` : comparaison de 4 modèles de prix avec MLflow
 
-Chaque dossier contient son `Dockerfile` et son `README.md`.
+Chaque application (`dashboard/`, `api/`) contient son `Dockerfile` et son `README.md`.
 
 ## Lancer en local
 
