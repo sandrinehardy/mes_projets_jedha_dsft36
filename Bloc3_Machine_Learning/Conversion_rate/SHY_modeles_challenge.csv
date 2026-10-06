@@ -1,0 +1,5 @@
+name,characteristics,f1_train,f1_test,precision_test,recall_test,threshold,f1_test_sans_seuil
+M0_base,"Régression logistique (paramètres par défaut), 1 variable : total_pages_visited, standardisée",0.6971093422706326,0.677195198989261,0.806015037593985,0.5838779956427015,0.5,
+M1_logreg_seuil,"Régression logistique sans régularisation (C=inf), 5 variables (age, new_user, total_pages_visited standardisées ; country, source en one-hot)",0.7712723474841802,0.7585825027685493,0.7713963963963963,0.7461873638344226,0.35,0.7602905569007264
+M2_logreg_ridge_seuil,"Régression logistique L2 (Ridge), C=100, 5 variables (age, new_user, total_pages_visited standardisées ; country, source en one-hot)",0.7712723474841802,0.7585825027685493,0.7713963963963963,0.7461873638344226,0.35,0.7602905569007264
+M3_xgboost_seuil,"XGBoost, {'model__max_depth': 4, 'model__n_estimators': 50}, 5 variables (age, new_user, total_pages_visited standardisées ; country, source en one-hot)",0.7706125613853709,0.7565674255691769,0.8150943396226416,0.7058823529411765,0.441,0.7584973166368515
