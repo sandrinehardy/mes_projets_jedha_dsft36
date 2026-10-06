@@ -2,7 +2,7 @@
 
 Projet du bloc 1 : à partir de la météo et des hôtels de 35 villes françaises, recommander les destinations qui ont le plus beau temps et afficher leurs meilleurs hôtels.
 
-📁 Dépôt GitHub du projet : [mes_projets_jedha_dsft36 / Bloc1_Kayak](https://github.com/sandrinehardy/mes_projets_jedha_dsft36/tree/main/Bloc1_Kayak)
+📁 Dépôt GitHub du projet : [mes_projets_jedha_dsft36 / Bloc1_Data_Infrastructure](https://github.com/sandrinehardy/mes_projets_jedha_dsft36/tree/main/Bloc1_Data_Infrastructure)
 
 ## Par où commencer
 
