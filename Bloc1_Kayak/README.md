@@ -41,3 +41,13 @@ Le fichier `kayak_data.csv` est dans le bucket S3 `shy-certif-cdsd` (région eu-
 https://shy-certif-cdsd.s3.eu-west-3.amazonaws.com/kayak_data.csv
 
 Le reste du bucket reste privé. La base PostgreSQL (AWS RDS) n'est accessible que depuis l'adresse IP de l'auteur : elle est documentée par le PDF et par les requêtes SQL du notebook. Après la soutenance, le lien S3 ne fonctionnera plus : `kayak_data_depuis_s3.csv` contient le même fichier.
+
+## Résultats
+
+**Carte 1 : le Top-5 des destinations avec le plus beau temps**
+
+![Carte 1 : Top-5 des destinations](carte1_Top5_destinations.png)
+
+**Carte 2 : le Top-20 des hôtels d'une ville du Top-5**
+
+![Carte 2 : Top-20 des hôtels](carte2_hotels.png)
