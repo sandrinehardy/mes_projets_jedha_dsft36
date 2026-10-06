@@ -1,0 +1,19 @@
+# Secrets : ne jamais publier
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Système / éditeur
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Archives
+*.zip
