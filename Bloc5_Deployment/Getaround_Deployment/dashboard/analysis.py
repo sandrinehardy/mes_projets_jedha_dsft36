@@ -52,10 +52,11 @@ def threshold_table(df: pd.DataFrame, thresholds=range(0, 721, 30)) -> pd.DataFr
     """Effet d'un délai minimum T entre deux locations (T en minutes).
 
     - blocked : locations adjacentes dont l'écart est inférieur à T (elles n'auraient pas eu lieu)
-    - share_blocked : part des locations terminées perdues (approximation de la part du revenu
+    - share_blocked : part des locations terminées bloquées (approximation de la part du revenu
       affectée : les données ne contiennent pas le prix de chaque location)
     - solved : cas problématiques résolus (écart < T, donc location bloquée alors qu'elle posait problème)
     - solved_share : part des cas problématiques résolus
+    - solved_pct_ended : cas problématiques résolus / ensemble des locations terminées
     """
     adj = adjacent_rentals(df)
     n_ended = int((df["state"] == "ended").sum())
@@ -73,6 +74,7 @@ def threshold_table(df: pd.DataFrame, thresholds=range(0, 721, 30)) -> pd.DataFr
                 "share_blocked": blocked / n_ended if n_ended else np.nan,
                 "solved": solved,
                 "solved_share": solved / n_problem if n_problem else np.nan,
+                "solved_pct_ended": solved / n_ended if n_ended else np.nan,
             }
         )
     return pd.DataFrame(rows)
@@ -116,3 +118,56 @@ def late_share_by_checkin(df: pd.DataFrame) -> pd.DataFrame:
             "Part": [late.mean(), share["connect"], share["mobile"]],
         }
     )
+
+
+GAP_CATEGORIES = [
+    "Conservée : sans problème",
+    "Conservée : retard problématique",
+    "Bloquée : sans problème",
+    "Bloquée : retard problématique",
+]
+
+
+def gap_histogram(df: pd.DataFrame, threshold: int, step: int = 30, max_gap: int = 720) -> pd.DataFrame:
+    """Locations qui suivent une autre location, par écart avec la précédente (tranches de `step` minutes).
+
+    Chaque location est « bloquée » si son écart est inférieur au seuil, « conservée » sinon,
+    et « retard problématique » si la location précédente a été rendue après son début.
+    Les écarts au-delà de `max_gap` sont regroupés dans la dernière tranche.
+    """
+    adj = adjacent_rentals(df)
+    gap = adj["time_delta_with_previous_rental_in_minutes"]
+    start = (gap // step * step).clip(upper=max_gap).astype(int)
+    blocked = gap < threshold
+    problem = adj["problematic"]
+    category = np.select(
+        [~blocked & ~problem, ~blocked & problem, blocked & ~problem],
+        GAP_CATEGORIES[:3],
+        default=GAP_CATEGORIES[3],
+    )
+    out = pd.DataFrame({"start": start.to_numpy(), "Catégorie": category})
+    out = out.groupby(["start", "Catégorie"]).size().reset_index(name="Nombre")
+    out["Écart"] = out["start"].map(lambda v: f"{v}+" if v >= max_gap else str(v))
+    out["Ordre"] = out["Catégorie"].map({c: i for i, c in enumerate(GAP_CATEGORIES)})
+    return out.drop(columns="start")
+
+
+def compare_scopes(df: pd.DataFrame, threshold: int) -> pd.DataFrame:
+    """Pour un seuil donné : toutes les voitures, Connect, mobile."""
+    rows = []
+    for name, scope in SCOPES.items():
+        d = filter_scope(df, scope)
+        r = threshold_table(d).query("threshold == @threshold").iloc[0]
+        rows.append(
+            {
+                "Périmètre": name,
+                "Locations": len(d),
+                "Cas problématiques": kpis(d)["n_problematic"],
+                "Locations bloquées": int(r["blocked"]),
+                "Part bloquée": r["share_blocked"],
+                "Cas résolus": int(r["solved"]),
+                "Part des problèmes résolus": r["solved_share"],
+                "Cas résolus / locations terminées": r["solved_pct_ended"],
+            }
+        )
+    return pd.DataFrame(rows)
