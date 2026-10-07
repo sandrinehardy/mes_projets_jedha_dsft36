@@ -76,3 +76,43 @@ def threshold_table(df: pd.DataFrame, thresholds=range(0, 721, 30)) -> pd.DataFr
             }
         )
     return pd.DataFrame(rows)
+
+
+def delay_breakdown(df: pd.DataFrame) -> pd.DataFrame:
+    """Locations terminées dont le retard est connu : à l'heure / retard simple / le suivant a attendu / le suivant a annulé."""
+    ended = df[(df["state"] == "ended") & df["delay_at_checkout_in_minutes"].notna()]
+    n_late = int((ended["delay_at_checkout_in_minutes"] > 0).sum())
+    problem = adjacent_rentals(df).query("problematic")
+    canceled = int((problem["state"] == "canceled").sum())
+    waited = len(problem) - canceled
+    out = pd.DataFrame(
+        {
+            "Catégorie": ["À l'heure ou en avance", "Retard simple", "Le suivant a attendu", "Le suivant a annulé"],
+            "Nombre": [len(ended) - n_late, n_late - waited - canceled, waited, canceled],
+        }
+    )
+    out["Part"] = out["Nombre"] / out["Nombre"].sum()
+    return out
+
+
+def delay_buckets(df: pd.DataFrame) -> pd.DataFrame:
+    """Répartition des retards au check-out par tranche (locations terminées dont le retard est connu)."""
+    delay = df.loc[df["state"] == "ended", "delay_at_checkout_in_minutes"].dropna()
+    labels = ["À l'heure ou en avance", "1-30 min", "30-60 min", "60-120 min", "120-240 min", "+ de 240 min"]
+    bins = pd.cut(delay, [-np.inf, 0, 30, 60, 120, 240, np.inf], labels=labels)
+    out = bins.value_counts().reindex(labels).rename_axis("Tranche").reset_index(name="Nombre")
+    out["Part"] = out["Nombre"] / out["Nombre"].sum()
+    return out
+
+
+def late_share_by_checkin(df: pd.DataFrame) -> pd.DataFrame:
+    """Part de locations terminées rendues en retard, par type de check-in (retards inconnus exclus)."""
+    ended = df[(df["state"] == "ended") & df["delay_at_checkout_in_minutes"].notna()]
+    late = ended["delay_at_checkout_in_minutes"] > 0
+    share = late.groupby(ended["checkin_type"]).mean()
+    return pd.DataFrame(
+        {
+            "Type de check-in": ["Toutes les voitures", "Getaround Connect", "Check-in mobile"],
+            "Part": [late.mean(), share["connect"], share["mobile"]],
+        }
+    )

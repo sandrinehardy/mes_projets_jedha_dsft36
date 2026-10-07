@@ -1,4 +1,5 @@
 """Dashboard Getaround : quel délai minimum imposer entre deux locations ?"""
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -96,22 +97,59 @@ c2.metric("Annulées", f"{k['share_canceled']:.0%}")
 c3.metric("Rendues en retard", f"{k['share_late']:.0%}", help="Part des locations terminées rendues après l'heure prévue")
 c4.metric("Retard médian (si retard)", f"{k['median_delay_late']:.0f} min")
 
-ended = data[data["state"] == "ended"]
-delay = ended["delay_at_checkout_in_minutes"].dropna().clip(-180, 360)
-bins = pd.cut(delay, bins=range(-180, 361, 30))
-hist = bins.value_counts().sort_index()
-hist.index = [f"{int(i.left)} à {int(i.right)}" for i in hist.index]
-st.bar_chart(hist)
-st.caption("Retard au check-out en minutes (négatif = rendue en avance). Valeurs extrêmes regroupées dans les bords.")
+GREY, TEAL, ORANGE, DARK = "#8A99A3", "#149CA6", "#E06A2B", "#0E3449"
 
-by_type = (
-    data[data["state"] == "ended"]
-    .assign(late=lambda d: d["delay_at_checkout_in_minutes"] > 0)
-    .groupby("checkin_type")["late"]
-    .mean()
-    .rename("Part de retards")
+# Répartition des retards (suit le périmètre choisi)
+buckets = an.delay_buckets(data)
+buckets["Couleur"] = [GREY] + [TEAL] * (len(buckets) - 1)
+base = alt.Chart(buckets).encode(
+    x=alt.X("Tranche:N", sort=list(buckets["Tranche"]), title=None, axis=alt.Axis(labelAngle=0)),
+    y=alt.Y("Part:Q", title="Part des locations terminées", axis=alt.Axis(format="%")),
 )
-st.bar_chart(by_type)
+bars = base.mark_bar().encode(
+    color=alt.Color("Couleur:N", scale=None, legend=None),
+    tooltip=["Tranche", "Nombre", alt.Tooltip("Part:Q", format=".1%")],
+)
+labels = base.mark_text(dy=-8).encode(text=alt.Text("Part:Q", format=".0%"))
+st.subheader("Répartition des retards au rendu")
+st.altair_chart(bars + labels, use_container_width=True)
+st.caption("Locations terminées dont le retard est connu. Le retard est mesuré au check-out ; « à l'heure ou en avance » regroupe les retards inférieurs ou égaux à 0.")
+
+left, right = st.columns(2)
+with left:
+    st.subheader("Qui est concerné par les retards ?")
+    breakdown = an.delay_breakdown(data)
+    cats = list(breakdown["Catégorie"])
+    pie = (
+        alt.Chart(breakdown)
+        .mark_arc()
+        .encode(
+            theta="Nombre:Q",
+            color=alt.Color(
+                "Catégorie:N",
+                scale=alt.Scale(domain=cats, range=[GREY, TEAL, ORANGE, DARK]),
+                legend=alt.Legend(orient="bottom", title=None, columns=2),
+            ),
+            tooltip=["Catégorie", "Nombre", alt.Tooltip("Part:Q", format=".1%")],
+        )
+    )
+    st.altair_chart(pie, use_container_width=True)
+    st.caption(f"{scope_label}. Passer la souris sur une part pour voir le nombre et le pourcentage.")
+with right:
+    st.subheader("Part de retards par type de check-in")
+    by_type = an.late_share_by_checkin(df)
+    types = list(by_type["Type de check-in"])
+    base_t = alt.Chart(by_type).encode(
+        x=alt.X("Type de check-in:N", sort=types, title=None, axis=alt.Axis(labelAngle=0)),
+        y=alt.Y("Part:Q", title="Part de retards", axis=alt.Axis(format="%"), scale=alt.Scale(domain=[0, 1])),
+    )
+    bars_t = base_t.mark_bar().encode(
+        color=alt.Color("Type de check-in:N", scale=alt.Scale(domain=types, range=[DARK, TEAL, ORANGE]), legend=None),
+        tooltip=["Type de check-in", alt.Tooltip("Part:Q", format=".1%")],
+    )
+    labels_t = base_t.mark_text(dy=-8).encode(text=alt.Text("Part:Q", format=".0%"))
+    st.altair_chart(bars_t + labels_t, use_container_width=True)
+    st.caption("Tous les périmètres (indépendant du filtre). Locations dont le retard n'est pas renseigné exclues.")
 
 # ------------------------------------------------------------------ Impact sur le conducteur suivant
 st.header("Quel impact sur le conducteur suivant ?")
@@ -127,16 +165,6 @@ if len(problem):
         f"Dans les cas problématiques, le conducteur suivant attend en médiane **{waiting.median():.0f} min** "
         f"(9 cas sur 10 sous {waiting.quantile(0.9):.0f} min)."
     )
-
-# ------------------------------------------------------------------ Recommandation
-st.header("Recommandation")
-st.markdown(
-    """
-- **Seuil conseillé : 90 à 120 minutes.** Il résout environ 80 % des cas problématiques pour une perte d'environ 3 % des locations. Au-delà, on perd de plus en plus de locations pour un gain faible.
-- **Périmètre :** commencer par les voitures **Connect** si l'on veut limiter l'impact sur les revenus ; le coût y est plus élevé par voiture (les locations s'enchaînent plus), à comparer au tableau ci-dessus. Appliquer à toutes les voitures règle plus de cas au total.
-- **Pour aller plus loin :** tester le seuil sur une partie du parc avant de le généraliser, et suivre le taux d'annulation.
-"""
-)
 
 with st.expander("Définitions et hypothèses"):
     st.markdown(
