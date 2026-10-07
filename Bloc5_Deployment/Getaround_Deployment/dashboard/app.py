@@ -226,7 +226,7 @@ with tab_price:
     st.header("Prédiction de prix")
     st.markdown(
         "Renseignez les caractéristiques d'une voiture : le dashboard interroge l'API de prix "
-        f"(`{pred.API_URL}`) et affiche le prix de location suggéré par jour."
+        f"([documentation de l'API]({pred.API_URL}/docs)) et affiche le prix de location suggéré par jour."
     )
     with st.form("price_form"):
         c1, c2, c3, c4 = st.columns(4)
